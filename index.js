@@ -40,10 +40,9 @@ function verifyJWT(req, res, next) {
 async function run() {
     try {
         const usersCollection = client.db("trendyResale").collection("users");
-        const sellersCollection = client
+        const categoriesCollection = client
             .db("trendyResale")
-            .collection("sellers");
-        const buyersCollection = client.db("trendyResale").collection("buyers");
+            .collection("categories");
 
         const verifyAdmin = async (req, res, next) => {
             const decodedEmail = req.decoded.email;
@@ -65,6 +64,7 @@ async function run() {
             next();
         };
 
+        // Get JWT Token
         app.get("/jwt", async (req, res) => {
             const email = req.query.email;
             const query = { email: email };
@@ -78,6 +78,7 @@ async function run() {
             res.status(403).send({ accessToken: "" });
         });
 
+        // Users API
         app.get("/buyers", async (req, res) => {
             const query = { role: "Buyer" };
                 const users = await usersCollection.find(query).toArray();
@@ -152,6 +153,20 @@ async function run() {
             const id = req.params.id;
             const filter = { _id: ObjectId(id) };
             const result = await usersCollection.deleteOne(filter);
+            res.send(result);
+        });
+
+        // Category API
+
+        app.get("/categories", async (req, res) => {
+            const query = {};
+            const categories = await categoriesCollection.find(query).toArray();
+            res.send(categories);
+        });
+
+        app.post("/categories", async (req, res) => {            
+            const category = req.body;
+            const result = await categoriesCollection.insertOne(category);
             res.send(result);
         });
         
