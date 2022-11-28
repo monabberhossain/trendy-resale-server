@@ -40,12 +40,26 @@ function verifyJWT(req, res, next) {
 async function run() {
     try {
         const usersCollection = client.db("trendyResale").collection("users");
+        const sellersCollection = client
+            .db("trendyResale")
+            .collection("sellers");
+        const buyersCollection = client.db("trendyResale").collection("buyers");
 
         const verifyAdmin = async (req, res, next) => {
             const decodedEmail = req.decoded.email;
             const query = { email: decodedEmail };
             const user = await usersCollection.findOne(query);
             if (user?.role !== "Admin") {
+                return res.status(403).send({ message: "Forbidden Access!" });
+            }
+            next();
+        };
+
+        const verifySeller = async (req, res, next) => {
+            const decodedEmail = req.decoded.email;
+            const query = { email: decodedEmail };
+            const user = await usersCollection.findOne(query);
+            if (user?.role !== "Seller") {
                 return res.status(403).send({ message: "Forbidden Access!" });
             }
             next();
@@ -64,6 +78,18 @@ async function run() {
             res.status(403).send({ accessToken: "" });
         });
 
+        app.get("/buyers", async (req, res) => {
+            const query = { role: "Buyer" };
+                const users = await usersCollection.find(query).toArray();
+                res.send(users);
+        });        
+
+        app.get("/sellers", async (req, res) => {
+            const query = { role: "Seller" };
+            const users = await usersCollection.find(query).toArray();
+            res.send(users);
+        });
+
         app.get("/users", async (req, res) => {
             const query = {};
             const users = await usersCollection.find(query).toArray();
@@ -77,10 +103,17 @@ async function run() {
             res.send({ isAdmin: user?.role === "Admin" });
         });
 
+        app.get("/users/seller/:email", async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            res.send({ isSeller: user?.role === "Seller" });
+        });
+
         app.post("/users", async (req, res) => {
             const user = req.body;
-            const email = req.query.email;
-            const filter = { email };
+            const email = user.email;
+            const filter = { email: email };
             const query = await usersCollection.findOne(filter);
             if (query) {
                 console.log("User Exists");
@@ -121,6 +154,7 @@ async function run() {
             const result = await usersCollection.deleteOne(filter);
             res.send(result);
         });
+        
     } finally {
     }
 }
