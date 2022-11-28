@@ -21,9 +21,35 @@ app.get("/", (req, res) => {
     res.send("Hello Monabber Hossain! I am from server!");
 });
 
+function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        res.status(401).send("Unauthorized Access!");
+    }
+    const token = authHeader.split(" ")[1];
+
+    jwt.verify(token, process.env.ACCESS_TOKEN, function (error, decoded) {
+        if (error) {
+            return res.status(403).send({ message: "Forbidden Access!" });
+        }
+        req.decoded = decoded;
+        next();
+    });
+}
+
 async function run() {
     try {
-        const usersCollection = client.db("trendyResale").collection("users");        
+        const usersCollection = client.db("trendyResale").collection("users");
+
+        const verifyAdmin = async (req, res, next) => {
+            const decodedEmail = req.decoded.email;
+            const query = { email: decodedEmail };
+            const user = await usersCollection.findOne(query);
+            if (user?.role !== "Admin") {
+                return res.status(403).send({ message: "Forbidden Access!" });
+            }
+            next();
+        };
 
         app.get("/jwt", async (req, res) => {
             const email = req.query.email;
@@ -38,9 +64,61 @@ async function run() {
             res.status(403).send({ accessToken: "" });
         });
 
+        app.get("/users", async (req, res) => {
+            const query = {};
+            const users = await usersCollection.find(query).toArray();
+            res.send(users);
+        });
+
+        app.get("/users/admin/:email", async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollection.findOne(query);
+            res.send({ isAdmin: user?.role === "Admin" });
+        });
+
         app.post("/users", async (req, res) => {
             const user = req.body;
+            const email = req.query.email;
+            const filter = { email };
+            const query = await usersCollection.findOne(filter);
+            if (query) {
+                console.log("User Exists");
+                return res
+                    .status(422)
+                    .send({ message: "User Already Exists!" });
+            }
             const result = await usersCollection.insertOne(user);
+            console.log("User Created");
+            res.send(result);
+        });
+
+        app.put(
+            "/users/admin/:id",
+            verifyJWT,
+            verifyAdmin,
+            async (req, res) => {
+                const id = req.params.id;
+                const filter = { _id: ObjectId(id) };
+                const options = { upsert: true };
+                const updatedDoc = {
+                    $set: {
+                        role: "Admin",
+                    },
+                };
+                const result = await usersCollection.updateOne(
+                    filter,
+                    updatedDoc,
+                    options
+                );
+                res.send(result);
+            }
+        );
+
+        app.delete("/users/:id", verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const result = await usersCollection.deleteOne(filter);
             res.send(result);
         });
     } finally {
