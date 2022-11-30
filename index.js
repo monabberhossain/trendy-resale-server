@@ -41,8 +41,9 @@ async function run() {
     try {
         const usersCollection = client.db("trendyResale").collection("users");
         const categoriesCollection = client
-            .db("trendyResale")
-            .collection("categories");
+        .db("trendyResale")
+        .collection("categories");
+        const productsCollection = client.db("trendyResale").collection("products");
 
         const verifyAdmin = async (req, res, next) => {
             const decodedEmail = req.decoded.email;
@@ -167,6 +168,14 @@ async function run() {
         app.post("/categories", async (req, res) => {            
             const category = req.body;
             const result = await categoriesCollection.insertOne(category);
+            res.send(result);
+        });
+
+        // Products API
+
+        app.post("/products", verifyJWT, verifySeller, async (req, res) => {
+            const product = req.body;
+            const result = await productsCollection.insertOne(product);
             res.send(result);
         });
         
