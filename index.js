@@ -111,6 +111,16 @@ async function run() {
             const query = { email: email };
             const user = await usersCollection.findOne(query);
             res.send({ isSeller: user?.role === "Seller" });
+        });        
+
+        app.get("/users/verified/:email", async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            res.send({
+                isVerified:
+                    user?.role === "Seller" && user?.status === "Verified",
+            });
         });
 
         app.post("/users", async (req, res) => {
@@ -139,7 +149,7 @@ async function run() {
                 const options = { upsert: true };
                 const updatedDoc = {
                     $set: {
-                        role: "Admin",
+                        status: "Verified",
                     },
                 };
                 const result = await usersCollection.updateOne(
@@ -180,7 +190,6 @@ async function run() {
             console.log((categoryName));
             const productQuery = {category: categoryName};
             const categoryProducts = await productsCollection.find(productQuery).toArray();
-            console.log(categoryProducts);
             res.send(categoryProducts);            
         });
 
