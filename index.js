@@ -6,6 +6,8 @@ const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 app.use(cors());
 app.use(express.json());
 
@@ -45,6 +47,10 @@ async function run() {
         .collection("categories");
         const productsCollection = client.db("trendyResale").collection("products");
         const bookedProductsCollection = client.db("trendyResale").collection("bookedProducts");
+        const paymentCollection = client
+            .db("doctorsPortal")
+            .collection("payments");
+
 
         const verifyAdmin = async (req, res, next) => {
             const decodedEmail = req.decoded.email;
@@ -252,6 +258,43 @@ async function run() {
             const id = req.params.id;
             const filter = { _id: ObjectId(id) };
             const result = await bookedProductsCollection.deleteOne(filter);
+            res.send(result);
+        });
+
+        // Payment API        
+
+        app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+            const bookedProduct = req.body;
+            const amountInDollar = bookedAppointment.price;
+            const amountInScent = amountInDollar * 100;
+
+            // Create a PaymentIntent with the order amount and currency
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amountInScent,
+                currency: "usd",
+                payment_method_types: ["card"],
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        });
+
+        app.post("/payments", async (req, res) => {
+            const payment = req.body;
+            const result = await paymentCollection.insertOne(payment);
+            const id = payment.bookingId;
+            const filter = { _id: ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId,
+                },
+            };
+            const updatedResult = await bookedProductsCollection.updateOne(
+                filter,
+                updatedDoc
+            );
             res.send(result);
         });
         
