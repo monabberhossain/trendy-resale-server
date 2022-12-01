@@ -44,6 +44,7 @@ async function run() {
         .db("trendyResale")
         .collection("categories");
         const productsCollection = client.db("trendyResale").collection("products");
+        const bookedProductsCollection = client.db("trendyResale").collection("bookedProducts");
 
         const verifyAdmin = async (req, res, next) => {
             const decodedEmail = req.decoded.email;
@@ -171,11 +172,54 @@ async function run() {
             res.send(result);
         });
 
+        app.get("/categories/:id", async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const category = await categoriesCollection.findOne(filter);
+            const categoryName = category.name;
+            console.log((categoryName));
+            const productQuery = {category: categoryName};
+            const categoryProducts = await productsCollection.find(productQuery).toArray();
+            console.log(categoryProducts);
+            res.send(categoryProducts);            
+        });
+
         // Products API
 
         app.post("/products", verifyJWT, verifySeller, async (req, res) => {
             const product = req.body;
             const result = await productsCollection.insertOne(product);
+            res.send(result);
+        });
+
+        app.get("/products", async (req, res) => {
+            const query = {};
+            const products = await productsCollection.find(query).toArray();
+            res.send(products);
+        });
+
+        app.get("/myproducts/:email", async (req, res) => {
+            const email = req.params.email;
+            console.log(email);
+            const query = { email: email };
+            const myProducts = await productsCollection.find(query).toArray();
+            res.send(myProducts);
+        });
+
+        app.delete("/products/:id", verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const result = await productsCollection.deleteOne(filter);
+            res.send(result);
+        });
+
+        // Booked Products API        
+
+        app.post("/bookedProducts", async (req, res) => {
+            const bookedProduct = req.body;
+            const result = await bookedProductsCollection.insertOne(
+                bookedProduct
+            );
             res.send(result);
         });
         
