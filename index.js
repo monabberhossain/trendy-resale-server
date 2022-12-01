@@ -209,7 +209,6 @@ async function run() {
 
         app.get("/myproducts/:email", async (req, res) => {
             const email = req.params.email;
-            console.log(email);
             const query = { email: email };
             const myProducts = await productsCollection.find(query).toArray();
             res.send(myProducts);
@@ -229,6 +228,30 @@ async function run() {
             const result = await bookedProductsCollection.insertOne(
                 bookedProduct
             );
+            res.send(result);
+        });
+
+        app.get("/bookedproducts", verifyJWT, verifyAdmin, async (req, res) => {
+            const query = {};
+            const bookedProducts = await bookedProductsCollection
+                .find(query)
+                .toArray();
+            res.send(bookedProducts);
+        });
+
+        app.get("/bookedproducts/:email", verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const bookedProducts = await bookedProductsCollection
+                .find(query)
+                .toArray();
+            res.send(bookedProducts);
+        });
+
+        app.delete("/bookedproducts/:id", verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const result = await bookedProductsCollection.deleteOne(filter);
             res.send(result);
         });
         
