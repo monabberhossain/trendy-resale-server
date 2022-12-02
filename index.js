@@ -47,8 +47,8 @@ async function run() {
         .collection("categories");
         const productsCollection = client.db("trendyResale").collection("products");
         const bookedProductsCollection = client.db("trendyResale").collection("bookedProducts");
-        const paymentCollection = client
-            .db("doctorsPortal")
+        const paymentsCollection = client
+            .db("trendyResale")
             .collection("payments");
 
 
@@ -245,7 +245,17 @@ async function run() {
             res.send(bookedProducts);
         });
 
-        app.get("/bookedproducts/:email", verifyJWT, async (req, res) => {
+        app.get("/bookedproducts/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const bookedProducts = await bookedProductsCollection.findOne(
+                query
+            );
+            res.send(bookedProducts);
+        });
+
+
+        app.get("/bookedproducts/:email", async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const bookedProducts = await bookedProductsCollection
@@ -265,7 +275,7 @@ async function run() {
 
         app.post("/create-payment-intent", verifyJWT, async (req, res) => {
             const bookedProduct = req.body;
-            const amountInDollar = bookedAppointment.price;
+            const amountInDollar = bookedProduct.price;
             const amountInScent = amountInDollar * 100;
 
             // Create a PaymentIntent with the order amount and currency
@@ -282,7 +292,7 @@ async function run() {
 
         app.post("/payments", async (req, res) => {
             const payment = req.body;
-            const result = await paymentCollection.insertOne(payment);
+            const result = await paymentsCollection.insertOne(payment);
             const id = payment.bookingId;
             const filter = { _id: ObjectId(id) };
             const updatedDoc = {
